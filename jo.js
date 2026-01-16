@@ -14,20 +14,17 @@ mainFilter.style.fontWeight = "600";
 
 mainFilter.innerHTML = `
   <option value="all">Show All Tasks</option>
-  
   <optgroup label="Status">
     <option value="STATUS:Not Started">Status: Pending</option>
     <option value="STATUS:In Progress">Status: Ongoing</option>
     <option value="STATUS:Completed">Status: Completed</option>
     <option value="STATUS:Cancelled">Status: Cancelled</option>
   </optgroup>
-  
   <optgroup label="Priority">
     <option value="PRIORITY:High">Priority: High</option>
     <option value="PRIORITY:Medium">Priority: Medium</option>
     <option value="PRIORITY:Low">Priority: Low</option>
   </optgroup>
-
   <optgroup label="Property">
     <option value="PROPERTY:ECO 1">Property: ECO 1</option>
     <option value="PROPERTY:ECO 2">Property: ECO 2</option>
@@ -56,10 +53,8 @@ searchInput.style.width = "140px";
 document.addEventListener("DOMContentLoaded", () => {
   if(filterContainer) {
     filterContainer.innerHTML = ""; 
-    // Ensure container aligns items horizontally
     filterContainer.style.display = "flex";
     filterContainer.style.alignItems = "center";
-    
     filterContainer.appendChild(mainFilter);
     filterContainer.appendChild(searchInput);
   }
@@ -94,8 +89,9 @@ async function fetchJobOrders() {
   }
 }
 
-// 4. Render Cards
+// 4. Render Cards (FIXED: ABSOLUTE POSITIONING)
 function renderJobOrders() {
+  console.log("Rendering Job Orders with PDF Buttons..."); // Check Console for this
   if (!jobOrderList) return;
 
   if (!allJobOrders.length) {
@@ -111,31 +107,27 @@ function renderJobOrders() {
   const parts = lastJO.split("-");
   const nextJO = "25-" + (parseInt(parts[1], 10) + 1).toString().padStart(4, "0");
 
-  // --- COMBINED FILTER LOGIC ---
+  // --- FILTER LOGIC ---
   const filterValue = mainFilter.value; 
   const searchValue = searchInput.value.trim().toLowerCase();
   
   const filtered = allJobOrders.filter(t => {
-      // 1. Check Dropdown
       let matchesCategory = true;
       if (filterValue !== "all") {
           const [category, val] = filterValue.split(":");
           matchesCategory = (t[category] || "").toUpperCase() === val.toUpperCase();
       }
-
-      // 2. Check Search (Search by Job Order Number)
       let matchesSearch = true;
       if (searchValue) {
           const joNum = (t["JOB ORDER NUMBER"] || "").toLowerCase();
           matchesSearch = joNum.includes(searchValue);
       }
-
       return matchesCategory && matchesSearch;
   });
 
   jobOrderList.innerHTML = "";
 
-  // Display Next JO at top
+  // Display Next JO
   const nextDiv = document.createElement("div");
   nextDiv.style.padding = "10px";
   nextDiv.style.textAlign = "right";
@@ -150,28 +142,42 @@ function renderJobOrders() {
       return;
   }
 
-  // Loop and Create Cards
+  // --- LOOP AND CREATE CARDS ---
   filtered.forEach(t => {
     const div = document.createElement("div");
     div.classList.add("task-card");
+    
+    // IMPORTANT: Make the card RELATIVE so the button can be ABSOLUTE inside it
+    div.style.position = "relative"; 
 
-    // Logic for visual classes (borders)
+    // 1. Create Unique ID
+    const uniqueID = `card-${t["JOB ORDER NUMBER"]}`;
+    div.id = uniqueID;
+
+    // Visual classes
     const priority = (t["PRIORITY"] || "low").toLowerCase();
     div.classList.add(priority); 
-
     const status = (t["STATUS"] || "").toLowerCase();
     let statusClass = "";
     if(status === "completed") statusClass = "status-completed";
     else if(status === "in progress") statusClass = "status-progress";
 
-    // HEADER: JO# + Property + Unit + Tenant
     const headerTitle = `JO #${t["JOB ORDER NUMBER"]} | ${t["PROPERTY"] || "N/A"} | ${t["UNIT NUMBER"]} | ${t["TENANTS NAME"]}`;
     
-    // BODY: The rest of the form details
+    // 2. HTML STRUCTURE
+    // Notice the button has 'position: absolute; top: 15px; right: 15px;'
     div.innerHTML = `
-      <h3 class="card-title">${headerTitle}</h3>
+      <button onclick="downloadCardAsPDF('${uniqueID}', '${t["JOB ORDER NUMBER"]}')" 
+              data-html2canvas-ignore="true"
+              style="position: absolute; top: 15px; right: 15px; z-index: 100; background-color: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+        <i class="fas fa-file-pdf"></i> PDF
+      </button>
+
+      <div style="border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px; padding-right: 60px;">
+          <h3 class="card-title" style="margin: 0;">${headerTitle}</h3>
+      </div>
       
-      <div class="meta-info" style="border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px;">
+      <div class="meta-info">
         <div style="margin-bottom: 8px;">
             <strong>Status:</strong> 
             <select class="status-dropdown ${statusClass}" onchange="updateStatus('${t["JOB ORDER NUMBER"]}', this.value)">
@@ -209,39 +215,37 @@ function renderJobOrders() {
 
 // Listeners
 mainFilter.addEventListener("change", renderJobOrders);
-searchInput.addEventListener("input", renderJobOrders); // Trigger on typing
-
-// Auto refresh every 30s
+searchInput.addEventListener("input", renderJobOrders); 
 setInterval(fetchJobOrders, 30000);
 
-// Function to Send Update to Google Sheet
+// Function to Send Update
 function updateStatus(joNumber, newStatus) {
-    const payload = { 
-        joNumber: joNumber, 
-        status: newStatus 
-    };
-
-    // If status is "Completed", add current date
+    const payload = { joNumber: joNumber, status: newStatus };
     if (newStatus === "Completed") {
         const today = new Date();
         payload.dateCompleted = today.toLocaleDateString(); 
     }
-
     fetch(sheetURL, {
         method: "POST",
         body: JSON.stringify(payload)
     })
     .then(response => response.json())
-    .then(data => {
-        if (data.result === "success") {
-            // Optionally show a success toast
-            // console.log("Update successful");
-        } else {
-            alert("Failed to update status: " + (data.message || "Unknown error"));
-        }
-    })
-    .catch(error => {
-        console.error("Error:", error);
-        alert("Network error updating status.");
-    });
+    .catch(error => { console.error("Error:", error); });
+}
+
+// 5. PDF GENERATION FUNCTION
+function downloadCardAsPDF(elementId, joNumber) {
+    const element = document.getElementById(elementId);
+    if (!element) {
+        alert("Error: Card not found.");
+        return;
+    }
+    const opt = {
+        margin:       0.5,
+        filename:     `JobOrder_${joNumber}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+    };
+    html2pdf().set(opt).from(element).save();
 }
