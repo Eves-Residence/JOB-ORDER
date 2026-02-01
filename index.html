@@ -1,68 +1,231 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Job Order Manager | EveConnect</title>
-  <link rel="shortcut icon" href="/img/logo.png" type="image/x-icon">
-  
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-  
-  <link rel="stylesheet" href="jo.css">
-  
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/tabletop.js/1.6.0/tabletop.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <script src="jo.js" defer></script>
-  
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Order Manager | EveConnect</title>
+    <link rel="shortcut icon" href="/img/logo.png" type="image/x-icon">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Link to the external CSS file -->
+    <link rel="stylesheet" href="jo.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 
-  <div class="main-wrapper">
-    
-    <div class="dashboard-grid-3">
-
-      <div class="column form-column">
-        <div class="card-header">
-          <h2>📝 Job Order Form</h2>
-        </div>
-        <div class="column-content form-wrapper">
-          <iframe 
-            src="https://docs.google.com/forms/d/e/1FAIpQLSf1Ljd9LzBXgTXiczNqkESTf1faqhzF_kvjlkB7bZQM-AHU7A/viewform?embedded=true">
-            Loading…
-          </iframe>
-        </div>
-        <div class="form-footer">
-          <p>Submit form above to save</p>
-        </div>
-      </div>
-
-      <div class="column list-column">
-        <div class="card-header split-header">
-          <!-- <h4>📋 Job Order List</h4> -->
-          <div id="filterContainer"></div> 
-        </div>
-        
-        <div id="taskList" class="column-content task-list-scroll">
-          <div class="loading">Loading Job Orders...</div>
-        </div>
-      </div>
-
-       <div class="column calendar-column">
-        <div class="card-header">
-          <h2>📅 Schedule</h2>
-        </div>
-        <div class="column-content calendar-wrapper">
-          <iframe 
-            src="https://calendar.google.com/calendar/embed?src=23195d0aba5de40a69bfc9fe008e82f4a1824526aeb5fd447527468549586af2%40group.calendar.google.com&ctz=Asia%2FManila" 
-            style="border:0" width="100%" height="100%" frameborder="0" scrolling="no">
-          </iframe>
-        </div>
-      </div>
-
+    <div class="top-bar">
+        <button id="toggleFormBtn">
+            <i class="fas fa-columns" id="toggleIcon"></i> 
+            <span id="toggleText">Hide Order Form</span>
+        </button>
     </div>
 
-  </div>
+    <div class="main-wrapper">
+        <div class="dashboard-grid-3">
 
+            <!-- LEFT COLUMN: Form -->
+            <div class="column form-column">
+                <div class="card-header">
+                    <h2>📝 Job Order Form</h2>
+                </div>
+                <div class="column-content form-wrapper">
+                    <iframe 
+                        src="https://docs.google.com/forms/d/e/1FAIpQLSf1Ljd9LzBXgTXiczNqkESTf1faqhzF_kvjlkB7bZQM-AHU7A/viewform?embedded=true">
+                        Loading…
+                    </iframe>
+                </div>
+                <div class="form-footer">
+                    <p>Submit form above to save</p>
+                </div>
+            </div>
+
+            <!-- MIDDLE COLUMN: Task List -->
+            <div class="column list-column">
+                <div class="card-header split-header">
+                    <div id="filterContainer"></div> 
+                </div>
+                
+                <div id="taskList" class="column-content">
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i> Loading Job Orders...
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: Calendar -->
+            <div class="column calendar-column">
+                <div class="card-header">
+                    <h2>📅 Schedule</h2>
+                </div>
+                <div class="column-content calendar-wrapper">
+                    <iframe 
+                        src="https://calendar.google.com/calendar/embed?src=23195d0aba5de40a69bfc9fe008e82f4a1824526aeb5fd447527468549586af2%40group.calendar.google.com&ctz=Asia%2FManila" 
+                        style="border:0" width="100%" height="100%" frameborder="0" scrolling="no">
+                    </iframe>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const sheetURL = "https://script.google.com/macros/s/AKfycbw-nMYpLS2Rcx8WCVpijJMfW_HmPOxCPhnEaa-DPXqxMwZ_Pl8Qy8iGdz_KHZGR9Nu-/exec";
+
+        let allJobOrders = [];
+        const jobOrderList = document.getElementById("taskList");
+        const filterContainer = document.getElementById("filterContainer");
+
+        // 1. Create Filters
+        const mainFilter = document.createElement("select");
+        mainFilter.id = "mainFilter";
+        mainFilter.innerHTML = `
+            <option value="all">Show All Tasks</option>
+            <optgroup label="Status">
+                <option value="STATUS:Not Started">Status: Pending</option>
+                <option value="STATUS:In Progress">Status: Ongoing</option>
+                <option value="STATUS:Completed">Status: Completed</option>
+            </optgroup>
+            <optgroup label="Priority">
+                <option value="PRIORITY:High">Priority: High</option>
+                <option value="PRIORITY:Medium">Priority: Medium</option>
+                <option value="PRIORITY:Low">Priority: Low</option>
+            </optgroup>
+        `;
+
+        const searchInput = document.createElement("input");
+        searchInput.type = "text";
+        searchInput.placeholder = "Search JO #...";
+        searchInput.style.marginLeft = "10px";
+
+        // Toggle Logic
+        document.addEventListener("DOMContentLoaded", () => {
+            if(filterContainer) {
+                filterContainer.appendChild(mainFilter);
+                filterContainer.appendChild(searchInput);
+            }
+            
+            const toggleBtn = document.getElementById('toggleFormBtn');
+            const formCol = document.querySelector('.form-column');
+            const toggleText = document.getElementById('toggleText');
+            
+            toggleBtn.addEventListener('click', () => {
+                const isCollapsed = formCol.classList.toggle('collapsed');
+                toggleText.textContent = isCollapsed ? "Show Order Form" : "Hide Order Form";
+            });
+
+            fetchJobOrders();
+        });
+
+        // Parse TSV Data
+        function parseTSV(tsv) {
+            const lines = tsv.trim().split("\n");
+            const headers = lines.shift().split("\t").map(h => h.trim());
+            return lines.map(line => {
+                const cols = line.split("\t");
+                const obj = {};
+                headers.forEach((h, i) => {
+                    obj[h] = (cols[i] || "").trim();
+                });
+                return obj;
+            });
+        }
+
+        // Fetch Data
+        async function fetchJobOrders() {
+            try {
+                const res = await fetch(sheetURL);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const tsvText = await res.text();
+                allJobOrders = parseTSV(tsvText);
+                renderJobOrders();
+            } catch (err) {
+                console.error(err);
+                if(jobOrderList) jobOrderList.innerHTML = "<div class='loading' style='color:red;'>Error connecting to database.</div>";
+            }
+        }
+
+        // Render Cards
+        function renderJobOrders() {
+            if (!jobOrderList) return;
+            const filterValue = mainFilter.value; 
+            const searchValue = searchInput.value.trim().toLowerCase();
+
+            const filtered = allJobOrders.filter(t => {
+                let matchesCategory = true;
+                if (filterValue !== "all") {
+                    const [category, val] = filterValue.split(":");
+                    matchesCategory = (t[category] || "").toUpperCase() === val.toUpperCase();
+                }
+                let matchesSearch = true;
+                if (searchValue) {
+                    const joNum = (t["JOB ORDER NUMBER"] || "").toLowerCase();
+                    matchesSearch = joNum.includes(searchValue);
+                }
+                return matchesCategory && matchesSearch;
+            });
+
+            jobOrderList.innerHTML = "";
+
+            filtered.forEach(t => {
+                const div = document.createElement("div");
+                div.classList.add("task-card");
+                const priority = (t["PRIORITY"] || "low").toLowerCase();
+                div.classList.add(priority); 
+                const uniqueID = `card-${t["JOB ORDER NUMBER"]}`;
+                div.id = uniqueID;
+
+                const status = (t["STATUS"] || "").toLowerCase();
+                let statusClass = "";
+                if(status === "completed") statusClass = "status-completed";
+                else if(status === "in progress") statusClass = "status-progress";
+
+                div.innerHTML = `
+                    <button class="pdf-btn" onclick="downloadCardAsPDF('${uniqueID}', '${t["JOB ORDER NUMBER"]}')" data-html2canvas-ignore="true">
+                        <i class="fas fa-file-pdf"></i> PDF
+                    </button>
+                    <h3 class="card-title">JO #${t["JOB ORDER NUMBER"]} | ${t["PROPERTY"] || "N/A"}</h3>
+                    <div class="meta-info">
+                        <strong>Tenant:</strong> ${t["TENANTS NAME"]}<br>
+                        <strong>Unit:</strong> ${t["UNIT NUMBER"]}<br>
+                        <strong>Status:</strong> 
+                        <select class="status-dropdown ${statusClass}" onchange="updateStatus('${t["JOB ORDER NUMBER"]}', this.value)">
+                            <option value="Not Started" ${t["STATUS"] === "Not Started" ? "selected" : ""}>Pending</option>
+                            <option value="In Progress" ${t["STATUS"] === "In Progress" ? "selected" : ""}>Ongoing</option>
+                            <option value="Completed" ${t["STATUS"] === "Completed" ? "selected" : ""}>Completed</option>
+                        </select><br>
+                        <strong>Request Date:</strong> ${t["REQUEST DATE"]}<br>
+                        <strong>Description:</strong> ${t["REPAIR DESCRIPTION"]}
+                    </div>
+                `;
+                jobOrderList.appendChild(div);
+            });
+        }
+
+        mainFilter.addEventListener("change", renderJobOrders);
+        searchInput.addEventListener("input", renderJobOrders);
+
+        function updateStatus(joNumber, newStatus) {
+            const payload = { joNumber, status: newStatus };
+            fetch(sheetURL, { method: "POST", body: JSON.stringify(payload) })
+            .then(() => fetchJobOrders());
+        }
+
+        function downloadCardAsPDF(elementId, joNumber) {
+            const element = document.getElementById(elementId);
+            const opt = {
+                margin: 0.5,
+                filename: `JO_${joNumber}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+
+        setInterval(fetchJobOrders, 30000);
+    </script>
 </body>
 </html>
