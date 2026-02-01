@@ -22,21 +22,21 @@ body {
     box-sizing: border-box;
 }
 
-/* --- Toggle Button (Now designed for the filter bar) --- */
+/* --- Toggle Button (Integrated into Filter Bar) --- */
 #toggleFormBtn {
     background: var(--indigo-btn);
     color: white;
     border: none;
-    padding: 8px 15px;
-    border-radius: 10px;
+    padding: 8px 14px;
+    border-radius: 8px;
     cursor: pointer;
     font-family: "Poppins", sans-serif;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 12px;
     display: flex;
     align-items: center;
-    gap: 8px;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+    gap: 6px;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
     transition: all 0.3s ease;
     white-space: nowrap;
 }
@@ -49,7 +49,7 @@ body {
 /* --- Layout Container --- */
 .dashboard-grid-3 {
     display: flex; 
-    gap: 25px;
+    gap: 20px;
     flex: 1;
     max-width: 1600px; 
     margin: 0 auto;
@@ -71,11 +71,11 @@ body {
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Column Specific Widths - Normal State is now Hidden */
+/* Column Specific Widths - Default Hidden */
 .form-column {
     width: 0;
     min-width: 0;
-    margin-right: -25px;
+    margin-right: -20px;
     opacity: 0;
     padding: 0;
     pointer-events: none;
@@ -108,7 +108,7 @@ body {
 
 .card-header h2 {
     margin: 0;
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
     display: flex;
     align-items: center;
@@ -135,28 +135,26 @@ body {
 
 .form-footer p {
     text-align: center;
-    color: var(--text-black) !important;
-    font-size: 12px;
+    color: #666 !important;
+    font-size: 11px;
     margin-top: 10px;
 }
 
-/* --- Column 2: Task List Specifics --- */
+/* --- Filter Container Placement --- */
 .split-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
 }
 
 #filterContainer {
     display: flex;
     align-items: center;
-    gap: 10px;
-    width: 100%;
-    justify-content: flex-end;
+    gap: 8px;
 }
 
 #filterContainer select, #filterContainer input {
-    padding: 8px;
+    padding: 7px 10px;
     border: 1px solid #ddd;
     border-radius: 8px;
     background: #fff;
@@ -164,7 +162,7 @@ body {
     font-weight: 600;
     cursor: pointer;
     color: var(--text-black);
-    font-size: 13px;
+    font-size: 12px;
     outline: none;
 }
 
@@ -189,16 +187,16 @@ body {
 .task-card.low { border-left-color: #05CD99; }
 
 .card-title {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 800;
-    margin: 0 0 10px 0;
+    margin: 0 0 8px 0;
     text-transform: uppercase;
     color: var(--text-black) !important;
     padding-right: 60px;
 }
 
 .meta-info {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--text-black) !important; 
     margin-bottom: 10px;
     line-height: 1.6;
@@ -211,17 +209,16 @@ body {
 
 /* --- STATUS DROPDOWN STYLING --- */
 select.status-dropdown {
-    padding: 5px 10px;
+    padding: 4px 8px;
     border-radius: 6px;
     border: 1px solid #ccc;
     font-family: "Poppins", sans-serif;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     cursor: pointer;
     background-color: #fff;
     color: var(--text-black);
     margin-left: 5px;
-    transition: all 0.3s ease;
 }
 
 select.status-dropdown.status-completed {
@@ -235,46 +232,9 @@ select.status-dropdown.status-progress {
 }
 
 /* --- SCROLLBAR STYLING --- */
-.column-content::-webkit-scrollbar {
-    width: 8px;
-}
-
-.column-content::-webkit-scrollbar-track {
-    background: #f1f1f1; 
-    border-radius: 10px;
-}
-
-.column-content::-webkit-scrollbar-thumb {
-    background: #ccc; 
-    border-radius: 10px;
-}
-
-.column-content::-webkit-scrollbar-thumb:hover {
-    background: #888; 
-}
-
-/* Action Buttons */
-.action-buttons {
-    display: flex;
-    gap: 10px;
-}
-
-.btn {
-    padding: 6px 12px;
-    border: none;
-    border-radius: 6px;
-    color: var(--text-black); 
-    font-weight: 700;
-    font-size: 12px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.btn-edit { background-color: var(--btn-edit); }
-.btn-delete { background-color: var(--btn-delete); color: white !important;} 
-.btn:hover { opacity: 0.9; }
+.column-content::-webkit-scrollbar { width: 6px; }
+.column-content::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+.column-content::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
 
 /* PDF Button */
 .pdf-btn {
@@ -284,30 +244,29 @@ select.status-dropdown.status-progress {
     background-color: #e74c3c;
     color: white;
     border: none;
-    padding: 6px 12px;
+    padding: 5px 10px;
     border-radius: 6px;
     cursor: pointer;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
     transition: background 0.3s;
     z-index: 5;
 }
 
-.pdf-btn:hover {
-    background-color: #c0392b;
-}
+.pdf-btn:hover { background-color: #c0392b; }
 
 .loading {
     text-align: center;
     padding: 40px;
     font-weight: 600;
     color: #666;
+    font-size: 14px;
 }
 
 /* --- Responsive Design --- */
 @media (max-width: 1200px) {
     .calendar-column { display: none; }
-    .form-column { width: 320px; min-width: 320px; }
+    .form-column.active { width: 320px; min-width: 320px; }
 }
 
 @media (max-width: 900px) {
