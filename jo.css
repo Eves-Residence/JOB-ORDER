@@ -22,19 +22,12 @@ body {
     box-sizing: border-box;
 }
 
-/* --- Header & Toggle Button --- */
-.top-bar {
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
+/* --- Toggle Button (Now designed for the filter bar) --- */
 #toggleFormBtn {
     background: var(--indigo-btn);
     color: white;
     border: none;
-    padding: 10px 18px;
+    padding: 8px 15px;
     border-radius: 10px;
     cursor: pointer;
     font-family: "Poppins", sans-serif;
@@ -43,8 +36,9 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
     transition: all 0.3s ease;
+    white-space: nowrap;
 }
 
 #toggleFormBtn:hover {
@@ -60,7 +54,7 @@ body {
     max-width: 1600px; 
     margin: 0 auto;
     align-items: stretch;
-    height: calc(100vh - 100px);
+    height: calc(100vh - 40px);
     width: 100%;
 }
 
@@ -148,6 +142,14 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+#filterContainer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    justify-content: flex-end;
 }
 
 #filterContainer select, #filterContainer input {
