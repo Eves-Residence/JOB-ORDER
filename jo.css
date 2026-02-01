@@ -71,11 +71,24 @@ body {
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Column Specific Widths */
+/* Column Specific Widths - Normal State is now Hidden */
 .form-column {
+    width: 0;
+    min-width: 0;
+    margin-right: -25px;
+    opacity: 0;
+    padding: 0;
+    pointer-events: none;
+}
+
+/* Active state for showing the form */
+.form-column.active {
     width: 380px;
     min-width: 380px;
+    margin-right: 0;
     opacity: 1;
+    padding: 20px;
+    pointer-events: auto;
 }
 
 .list-column {
@@ -86,16 +99,6 @@ body {
 .calendar-column {
     width: 380px;
     min-width: 380px;
-}
-
-/* Collapsed State for Form */
-.form-column.collapsed {
-    width: 0;
-    min-width: 0;
-    margin-right: -25px;
-    opacity: 0;
-    padding: 0;
-    pointer-events: none;
 }
 
 .card-header {
