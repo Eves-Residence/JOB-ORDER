@@ -15,10 +15,10 @@ mainFilter.style.fontWeight = "600";
 mainFilter.innerHTML = `
   <option value="all">Show All Tasks</option>
   <optgroup label="Status">
-    <option value="STATUS:Not Started">Status: Pending</option>
-    <option value="STATUS:In Progress">Status: Ongoing</option>
-    <option value="STATUS:Completed">Status: Completed</option>
-    <option value="STATUS:Cancelled">Status: Cancelled</option>
+    <option value="J.O STATUS:Not Started">Status: Pending</option>
+    <option value="J.O STATUS:In Progress">Status: Ongoing</option>
+    <option value="J.O STATUS:Completed">Status: Completed</option>
+    <option value="J.O STATUS:Cancelled">Status: Cancelled</option>
   </optgroup>
   <optgroup label="Priority">
     <option value="PRIORITY:High">Priority: High</option>
@@ -84,12 +84,12 @@ async function fetchJobOrders() {
     allJobOrders = parseTSV(tsvText);
     renderJobOrders();
   } catch (err) {
-    console.error(err);
+    console.error("Fetch error:", err);
     if(jobOrderList) jobOrderList.innerHTML = "<p style='text-align:center; color:black; font-weight:bold;'>Error connecting to database.</p>";
   }
 }
 
-// 4. Render Cards (FIXED: ABSOLUTE POSITIONING)
+// 4. Render Cards
 function renderJobOrders() {
   if (!jobOrderList) return;
 
@@ -114,7 +114,12 @@ function renderJobOrders() {
       let matchesCategory = true;
       if (filterValue !== "all") {
           const [category, val] = filterValue.split(":");
-          matchesCategory = (t[category] || "").toUpperCase() === val.toUpperCase();
+          // Matches the exact header name for Status provided by user
+          if (category === "J.O STATUS") {
+              matchesCategory = (t["J.O STATUS"] || "").toUpperCase() === val.toUpperCase();
+          } else {
+              matchesCategory = (t[category] || "").toUpperCase() === val.toUpperCase();
+          }
       }
       let matchesSearch = true;
       if (searchValue) {
@@ -153,16 +158,16 @@ function renderJobOrders() {
     // Visual classes for JO Status
     const priority = (t["PRIORITY"] || "low").toLowerCase();
     div.classList.add(priority); 
-    const status = (t["STATUS"] || "").toLowerCase();
+    const status = (t["J.O STATUS"] || "").toLowerCase(); // Updated key
     let statusClass = "";
     if(status === "completed") statusClass = "status-completed";
     else if(status === "in progress") statusClass = "status-progress";
 
     // Visual classes for Payment Status
-    const payStatus = (t["PAYMENT STATUS"] || "UNPAID").toUpperCase();
+    const payStatus = (t["PAYMENT STATUS"] || "UNPAID").toUpperCase(); // Updated key
     let payStatusClass = "";
     if(payStatus === "PAID") payStatusClass = "status-completed";
-    else if(payStatus === "UNPAID") payStatusClass = "status-unpaid"; // Define in CSS if needed
+    else if(payStatus === "UNPAID") payStatusClass = "status-unpaid";
 
     const headerTitle = `JO #${t["JOB ORDER NUMBER"]} | ${t["PROPERTY"] || "N/A"} | ${t["UNIT NUMBER"]} | ${t["TENANTS NAME"]}`;
     
@@ -181,16 +186,16 @@ function renderJobOrders() {
         <div style="margin-bottom: 8px; display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
             <div>
                 <strong>J.O. Status:</strong> 
-                <select class="status-dropdown ${statusClass}" onchange="updateStatus('${t["JOB ORDER NUMBER"]}', this.value)">
-                    <option value="Not Started" ${t["STATUS"] === "Not Started" ? "selected" : ""}>Pending</option>
-                    <option value="In Progress" ${t["STATUS"] === "In Progress" ? "selected" : ""}>Ongoing</option>
-                    <option value="Completed" ${t["STATUS"] === "Completed" ? "selected" : ""}>Completed</option>
-                    <option value="Cancelled" ${t["STATUS"] === "Cancelled" ? "selected" : ""}>Cancelled</option>
+                <select class="status-dropdown ${statusClass}" onchange="updateStatus('${t["JOB ORDER NUMBER"]}', this.value, this)">
+                    <option value="Not Started" ${t["J.O STATUS"] === "Not Started" ? "selected" : ""}>Pending</option>
+                    <option value="In Progress" ${t["J.O STATUS"] === "In Progress" ? "selected" : ""}>Ongoing</option>
+                    <option value="Completed" ${t["J.O STATUS"] === "Completed" ? "selected" : ""}>Completed</option>
+                    <option value="Cancelled" ${t["J.O STATUS"] === "Cancelled" ? "selected" : ""}>Cancelled</option>
                 </select>
             </div>
             <div>
                 <strong>Payment Status:</strong> 
-                <select id="pay-status-${t["JOB ORDER NUMBER"]}" class="status-dropdown ${payStatusClass}" onchange="updatePayment('${t["JOB ORDER NUMBER"]}', this.value, document.getElementById('amount-${t["JOB ORDER NUMBER"]}').value)">
+                <select id="pay-status-${t["JOB ORDER NUMBER"]}" class="status-dropdown ${payStatusClass}" onchange="updatePayment('${t["JOB ORDER NUMBER"]}', this.value, document.getElementById('amount-${t["JOB ORDER NUMBER"]}').value, this)">
                     <option value="UNPAID" ${payStatus === "UNPAID" ? "selected" : ""}>UNPAID</option>
                     <option value="PAID" ${payStatus === "PAID" ? "selected" : ""}>PAID</option>
                     <option value="NO FEES" ${payStatus === "NO FEES" ? "selected" : ""}>NO FEES</option>
@@ -227,39 +232,74 @@ function renderJobOrders() {
 }
 
 // Listeners
-mainFilter.addEventListener("change", renderJobOrders);
+mainFilter.addEventListener("change", fetchJobOrders);
 searchInput.addEventListener("input", renderJobOrders); 
 setInterval(fetchJobOrders, 30000);
 
 // Function to Send Status Update
-function updateStatus(joNumber, newStatus) {
+function updateStatus(joNumber, newStatus, element) {
+    if (element) {
+        element.style.opacity = "0.5";
+        element.disabled = true;
+    }
+
     const payload = { joNumber: joNumber, status: newStatus };
     if (newStatus === "Completed") {
         const today = new Date();
         payload.dateCompleted = today.toLocaleDateString(); 
     }
+
+    console.log("Updating Status for JO:", joNumber, "to:", newStatus);
+
     fetch(sheetURL, {
         method: "POST",
         body: JSON.stringify(payload)
     })
-    .then(response => response.json())
-    .catch(error => { console.error("Error updating status:", error); });
+    .then(async response => {
+        if (!response.ok) throw new Error("Server error during update");
+        console.log("Status updated successfully in Sheet.");
+        await fetchJobOrders();
+    })
+    .catch(error => { 
+        console.error("Error updating status:", error);
+        if (element) {
+            element.style.opacity = "1";
+            element.disabled = false;
+        }
+    });
 }
 
 // Function to Send Payment Update
-function updatePayment(joNumber, status, amount) {
+function updatePayment(joNumber, status, amount, element) {
+    if (element && element.tagName === 'SELECT') {
+        element.style.opacity = "0.5";
+        element.disabled = true;
+    }
+
     const payload = { 
         joNumber: joNumber, 
         paymentStatus: status, 
         amountPaid: parseFloat(amount) || 0 
     };
+
+    console.log("Updating Payment for JO:", joNumber);
+
     fetch(sheetURL, {
         method: "POST",
         body: JSON.stringify(payload)
     })
-    .then(response => response.json())
-    .then(data => { console.log("Payment update result:", data); })
-    .catch(error => { console.error("Error updating payment:", error); });
+    .then(async response => {
+        if (!response.ok) throw new Error("Server error during payment update");
+        console.log("Payment updated successfully.");
+        await fetchJobOrders();
+    })
+    .catch(error => { 
+        console.error("Error updating payment:", error);
+        if (element && element.tagName === 'SELECT') {
+            element.style.opacity = "1";
+            element.disabled = false;
+        }
+    });
 }
 
 // 5. PDF GENERATION FUNCTION
@@ -278,5 +318,3 @@ function downloadCardAsPDF(elementId, joNumber) {
     };
     html2pdf().set(opt).from(element).save();
 }
-
-
