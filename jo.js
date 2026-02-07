@@ -162,7 +162,7 @@ function renderJobOrders() {
         div.classList.add(`status-${statusClass}`);
     }
 
-    // Set Border Color Based on Status as requested (Case-Insensitive)
+    // Set Border Color Based on Status (Case-Insensitive)
     let borderColor = "#ddd"; // Default
     if (statusUpper === "COMPLETED") borderColor = "#22C55E"; // Green
     else if (statusUpper === "NOT STARTED") borderColor = "#FBBF24"; // Yellow
@@ -264,6 +264,11 @@ function updateStatus(joNumber, newStatus, element) {
         payload.dateCompleted = new Date().toLocaleDateString(); 
     }
 
+    if (element) {
+        element.style.opacity = "0.5";
+        element.disabled = true;
+    }
+
     fetch(sheetURL, {
         method: "POST",
         body: JSON.stringify(payload)
@@ -295,6 +300,11 @@ function updatePayment(joNumber, status, amount, element) {
         paymentStatus: status, 
         amountPaid: parseFloat(amount) || 0 
     };
+
+    if (element && element.tagName === 'SELECT') {
+        element.style.opacity = "0.5";
+        element.disabled = true;
+    }
 
     fetch(sheetURL, {
         method: "POST",
