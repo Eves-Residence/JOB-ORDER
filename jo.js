@@ -1,4 +1,4 @@
-const sheetURL = "https://script.google.com/macros/s/AKfycbyfI1dIw_tT9-NC688PtL4VAz8J2Mm8L4mL0Ruyuy15N9gvJTcx7iSoy_NaS3qdphpY/exec";
+const sheetURL = "https://script.google.com/macros/s/AKfycbw-nMYpLS2Rcx8WCVpijJMfW_HmPOxCPhnEaa-DPXqxMwZ_Pl8Qy8iGdz_KHZGR9Nu-/exec";
 
 let allJobOrders = [];
 const jobOrderList = document.getElementById("taskList");
@@ -114,7 +114,6 @@ function renderJobOrders() {
       let matchesCategory = true;
       if (filterValue !== "all") {
           const [category, val] = filterValue.split(":");
-          // Matches the exact header name for Status provided by user
           if (category === "J.O STATUS") {
               matchesCategory = (t["J.O STATUS"] || "").toUpperCase() === val.toUpperCase();
           } else {
@@ -155,16 +154,19 @@ function renderJobOrders() {
     const uniqueID = `card-${t["JOB ORDER NUMBER"]}`;
     div.id = uniqueID;
 
-    // Visual classes for JO Status
+    // --- APPLY STATUS CLASS TO MAIN CARD ---
+    const statusRaw = (t["J.O STATUS"] || "").toLowerCase();
+    const statusClass = statusRaw.replace(/\s+/g, '-');
+    if (statusClass) {
+        div.classList.add(`status-${statusClass}`);
+    }
+
+    // Apply Priority Color (This controls the border-left-color)
     const priority = (t["PRIORITY"] || "low").toLowerCase();
     div.classList.add(priority); 
-    const status = (t["J.O STATUS"] || "").toLowerCase(); // Updated key
-    let statusClass = "";
-    if(status === "completed") statusClass = "status-completed";
-    else if(status === "in progress") statusClass = "status-progress";
 
-    // Visual classes for Payment Status
-    const payStatus = (t["PAYMENT STATUS"] || "UNPAID").toUpperCase(); // Updated key
+    // Visual helper for Payment Status
+    const payStatus = (t["PAYMENT STATUS"] || "UNPAID").toUpperCase();
     let payStatusClass = "";
     if(payStatus === "PAID") payStatusClass = "status-completed";
     else if(payStatus === "UNPAID") payStatusClass = "status-unpaid";
@@ -186,7 +188,7 @@ function renderJobOrders() {
         <div style="margin-bottom: 8px; display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
             <div>
                 <strong>J.O. Status:</strong> 
-                <select class="status-dropdown ${statusClass}" onchange="updateStatus('${t["JOB ORDER NUMBER"]}', this.value, this)">
+                <select class="status-dropdown status-${statusClass}" onchange="updateStatus('${t["JOB ORDER NUMBER"]}', this.value, this)">
                     <option value="Not Started" ${t["J.O STATUS"] === "Not Started" ? "selected" : ""}>Pending</option>
                     <option value="In Progress" ${t["J.O STATUS"] === "In Progress" ? "selected" : ""}>Ongoing</option>
                     <option value="Completed" ${t["J.O STATUS"] === "Completed" ? "selected" : ""}>Completed</option>
@@ -238,6 +240,10 @@ setInterval(fetchJobOrders, 30000);
 
 // Function to Send Status Update
 function updateStatus(joNumber, newStatus, element) {
+    // Immediate UI Feedback: Change dropdown class locally
+    const statusClass = newStatus.toLowerCase().replace(/\s+/g, '-');
+    element.className = `status-dropdown status-${statusClass}`;
+
     if (element) {
         element.style.opacity = "0.5";
         element.disabled = true;
@@ -249,7 +255,7 @@ function updateStatus(joNumber, newStatus, element) {
         payload.dateCompleted = today.toLocaleDateString(); 
     }
 
-    console.log("Updating Status for JO:", joNumber, "to:", newStatus);
+    console.log("Updating J.O STATUS for JO:", joNumber, "to:", newStatus);
 
     fetch(sheetURL, {
         method: "POST",
@@ -258,6 +264,7 @@ function updateStatus(joNumber, newStatus, element) {
     .then(async response => {
         if (!response.ok) throw new Error("Server error during update");
         console.log("Status updated successfully in Sheet.");
+        // Refresh everything to sync card border and data
         await fetchJobOrders();
     })
     .catch(error => { 
