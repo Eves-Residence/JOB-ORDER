@@ -91,7 +91,6 @@ async function fetchJobOrders() {
 
 // 4. Render Cards (FIXED: ABSOLUTE POSITIONING)
 function renderJobOrders() {
-  console.log("Rendering Job Orders with PDF Buttons..."); // Check Console for this
   if (!jobOrderList) return;
 
   if (!allJobOrders.length) {
@@ -146,15 +145,12 @@ function renderJobOrders() {
   filtered.forEach(t => {
     const div = document.createElement("div");
     div.classList.add("task-card");
-    
-    // IMPORTANT: Make the card RELATIVE so the button can be ABSOLUTE inside it
     div.style.position = "relative"; 
 
-    // 1. Create Unique ID
     const uniqueID = `card-${t["JOB ORDER NUMBER"]}`;
     div.id = uniqueID;
 
-    // Visual classes
+    // Visual classes for JO Status
     const priority = (t["PRIORITY"] || "low").toLowerCase();
     div.classList.add(priority); 
     const status = (t["STATUS"] || "").toLowerCase();
@@ -162,10 +158,14 @@ function renderJobOrders() {
     if(status === "completed") statusClass = "status-completed";
     else if(status === "in progress") statusClass = "status-progress";
 
+    // Visual classes for Payment Status
+    const payStatus = (t["PAYMENT STATUS"] || "UNPAID").toUpperCase();
+    let payStatusClass = "";
+    if(payStatus === "PAID") payStatusClass = "status-completed";
+    else if(payStatus === "UNPAID") payStatusClass = "status-unpaid"; // Define in CSS if needed
+
     const headerTitle = `JO #${t["JOB ORDER NUMBER"]} | ${t["PROPERTY"] || "N/A"} | ${t["UNIT NUMBER"]} | ${t["TENANTS NAME"]}`;
     
-    // 2. HTML STRUCTURE
-    // Notice the button has 'position: absolute; top: 15px; right: 15px;'
     div.innerHTML = `
       <button onclick="downloadCardAsPDF('${uniqueID}', '${t["JOB ORDER NUMBER"]}')" 
               data-html2canvas-ignore="true"
@@ -178,14 +178,27 @@ function renderJobOrders() {
       </div>
       
       <div class="meta-info">
-        <div style="margin-bottom: 8px;">
-            <strong>Status:</strong> 
-            <select class="status-dropdown ${statusClass}" onchange="updateStatus('${t["JOB ORDER NUMBER"]}', this.value)">
-                <option value="Not Started" ${t["STATUS"] === "Not Started" ? "selected" : ""}>Pending</option>
-                <option value="In Progress" ${t["STATUS"] === "In Progress" ? "selected" : ""}>Ongoing</option>
-                <option value="Completed" ${t["STATUS"] === "Completed" ? "selected" : ""}>Completed</option>
-                <option value="Cancelled" ${t["STATUS"] === "Cancelled" ? "selected" : ""}>Cancelled</option>
-            </select>
+        <div style="margin-bottom: 8px; display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+            <div>
+                <strong>J.O. Status:</strong> 
+                <select class="status-dropdown ${statusClass}" onchange="updateStatus('${t["JOB ORDER NUMBER"]}', this.value)">
+                    <option value="Not Started" ${t["STATUS"] === "Not Started" ? "selected" : ""}>Pending</option>
+                    <option value="In Progress" ${t["STATUS"] === "In Progress" ? "selected" : ""}>Ongoing</option>
+                    <option value="Completed" ${t["STATUS"] === "Completed" ? "selected" : ""}>Completed</option>
+                    <option value="Cancelled" ${t["STATUS"] === "Cancelled" ? "selected" : ""}>Cancelled</option>
+                </select>
+            </div>
+            <div>
+                <strong>Payment Status:</strong> 
+                <select id="pay-status-${t["JOB ORDER NUMBER"]}" class="status-dropdown ${payStatusClass}" onchange="updatePayment('${t["JOB ORDER NUMBER"]}', this.value, document.getElementById('amount-${t["JOB ORDER NUMBER"]}').value)">
+                    <option value="UNPAID" ${payStatus === "UNPAID" ? "selected" : ""}>UNPAID</option>
+                    <option value="PAID" ${payStatus === "PAID" ? "selected" : ""}>PAID</option>
+                    <option value="NO FEES" ${payStatus === "NO FEES" ? "selected" : ""}>NO FEES</option>
+                </select>
+            </div>
+            <div>
+                <strong>Amount Paid:</strong> ₱<input type="number" id="amount-${t["JOB ORDER NUMBER"]}" value="${t["AMOUNT PAID"] || 0}" style="width: 80px; padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-weight: 600;" onchange="updatePayment('${t["JOB ORDER NUMBER"]}', document.getElementById('pay-status-${t["JOB ORDER NUMBER"]}').value, this.value)">
+            </div>
         </div>
 
         <p><strong>Request Date:</strong> ${t["REQUEST DATE"]}</p>
@@ -218,7 +231,7 @@ mainFilter.addEventListener("change", renderJobOrders);
 searchInput.addEventListener("input", renderJobOrders); 
 setInterval(fetchJobOrders, 30000);
 
-// Function to Send Update
+// Function to Send Status Update
 function updateStatus(joNumber, newStatus) {
     const payload = { joNumber: joNumber, status: newStatus };
     if (newStatus === "Completed") {
@@ -230,7 +243,23 @@ function updateStatus(joNumber, newStatus) {
         body: JSON.stringify(payload)
     })
     .then(response => response.json())
-    .catch(error => { console.error("Error:", error); });
+    .catch(error => { console.error("Error updating status:", error); });
+}
+
+// Function to Send Payment Update
+function updatePayment(joNumber, status, amount) {
+    const payload = { 
+        joNumber: joNumber, 
+        paymentStatus: status, 
+        amountPaid: parseFloat(amount) || 0 
+    };
+    fetch(sheetURL, {
+        method: "POST",
+        body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => { console.log("Payment update result:", data); })
+    .catch(error => { console.error("Error updating payment:", error); });
 }
 
 // 5. PDF GENERATION FUNCTION
@@ -242,7 +271,7 @@ function downloadCardAsPDF(elementId, joNumber) {
     }
     const opt = {
         margin:       0.5,
-        filename:     `JobOrder_${joNumber}.pdf`,
+        filename:      `JobOrder_${joNumber}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { scale: 2, useCORS: true },
         jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
