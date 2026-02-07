@@ -1,4 +1,4 @@
-const sheetURL = "https://script.google.com/macros/s/AKfycbyfI1dIw_tT9-NC688PtL4VAz8J2Mm8L4mL0Ruyuy15N9gvJTcx7iSoy_NaS3qdphpY/exec";
+const sheetURL = "https://script.google.com/macros/s/AKfycbw-nMYpLS2Rcx8WCVpijJMfW_HmPOxCPhnEaa-DPXqxMwZ_Pl8Qy8iGdz_KHZGR9Nu-/exec";
 
 let allJobOrders = [];
 const jobOrderList = document.getElementById("taskList");
@@ -246,31 +246,22 @@ setInterval(fetchJobOrders, 30000);
 
 // Function to Send Status Update
 function updateStatus(joNumber, newStatus, element) {
-    // Immediate UI Feedback: Change dropdown class and card border locally
-    const statusClass = newStatus.toLowerCase().replace(/\s+/g, '-');
-    element.className = `status-dropdown status-${statusClass}`;
-    
-    // Find the parent card to update border color immediately
-    const card = element.closest('.task-card');
-    const newStatusUpper = newStatus.toUpperCase().trim();
-    if (card) {
-        let borderColor = "#ddd";
-        if (newStatusUpper === "COMPLETED") borderColor = "#22C55E";
-        else if (newStatusUpper === "NOT STARTED") borderColor = "#FBBF24";
-        else if (newStatusUpper === "IN PROGRESS") borderColor = "#F97316";
-        else if (newStatusUpper === "CANCELLED") borderColor = "#EF4444";
-        card.style.borderLeft = `6px solid ${borderColor}`;
+    // 1. OPTIMISTIC UPDATE: Update the local data array immediately
+    const jobIndex = allJobOrders.findIndex(job => job["JOB ORDER NUMBER"] === joNumber);
+    if (jobIndex !== -1) {
+        allJobOrders[jobIndex]["J.O STATUS"] = newStatus;
+        if (newStatus === "Completed") {
+            allJobOrders[jobIndex]["DATE COMPLETED"] = new Date().toLocaleDateString();
+        }
     }
 
-    if (element) {
-        element.style.opacity = "0.5";
-        element.disabled = true;
-    }
+    // 2. IMMEDIATE UI REFRESH: Re-render cards so the border color and dropdown update instantly
+    renderJobOrders();
 
+    // 3. BACKGROUND SYNC: Send the update to Google Sheets
     const payload = { joNumber: joNumber, status: newStatus };
-    if (newStatusUpper === "COMPLETED") {
-        const today = new Date();
-        payload.dateCompleted = today.toLocaleDateString(); 
+    if (newStatus === "Completed") {
+        payload.dateCompleted = new Date().toLocaleDateString(); 
     }
 
     console.log("Updating J.O STATUS for JO:", joNumber, "to:", newStatus);
@@ -282,24 +273,25 @@ function updateStatus(joNumber, newStatus, element) {
     .then(async response => {
         if (!response.ok) throw new Error("Server error during update");
         console.log("Status updated successfully in Sheet.");
-        // Refresh everything to sync card border and data from database
+        // We still fetch once more after the server responds to ensure perfect sync
         await fetchJobOrders();
     })
     .catch(error => { 
         console.error("Error updating status:", error);
-        if (element) {
-            element.style.opacity = "1";
-            element.disabled = false;
-        }
+        // If error, revert local state and re-render
+        fetchJobOrders();
     });
 }
 
 // Function to Send Payment Update
 function updatePayment(joNumber, status, amount, element) {
-    if (element && element.tagName === 'SELECT') {
-        element.style.opacity = "0.5";
-        element.disabled = true;
+    // 1. OPTIMISTIC UPDATE
+    const jobIndex = allJobOrders.findIndex(job => job["JOB ORDER NUMBER"] === joNumber);
+    if (jobIndex !== -1) {
+        allJobOrders[jobIndex]["PAYMENT STATUS"] = status;
+        allJobOrders[jobIndex]["AMOUNT PAID"] = amount;
     }
+    renderJobOrders();
 
     const payload = { 
         joNumber: joNumber, 
@@ -320,10 +312,7 @@ function updatePayment(joNumber, status, amount, element) {
     })
     .catch(error => { 
         console.error("Error updating payment:", error);
-        if (element && element.tagName === 'SELECT') {
-            element.style.opacity = "1";
-            element.disabled = false;
-        }
+        fetchJobOrders();
     });
 }
 
@@ -343,4 +332,3 @@ function downloadCardAsPDF(elementId, joNumber) {
     };
     html2pdf().set(opt).from(element).save();
 }
-
