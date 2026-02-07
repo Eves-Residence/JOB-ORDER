@@ -1,4 +1,4 @@
-const sheetURL = "https://script.google.com/macros/s/AKfycbyfI1dIw_tT9-NC688PtL4VAz8J2Mm8L4mL0Ruyuy15N9gvJTcx7iSoy_NaS3qdphpY/exec";
+const sheetURL = "https://script.google.com/macros/s/AKfycbw-nMYpLS2Rcx8WCVpijJMfW_HmPOxCPhnEaa-DPXqxMwZ_Pl8Qy8iGdz_KHZGR9Nu-/exec";
 
 let allJobOrders = [];
 const jobOrderList = document.getElementById("taskList");
@@ -246,7 +246,6 @@ setInterval(fetchJobOrders, 30000);
 
 // Function to Send Status Update
 function updateStatus(joNumber, newStatus, element) {
-    // 1. OPTIMISTIC UPDATE: Update the local data array immediately
     const jobIndex = allJobOrders.findIndex(job => job["JOB ORDER NUMBER"] === joNumber);
     if (jobIndex !== -1) {
         allJobOrders[jobIndex]["J.O STATUS"] = newStatus;
@@ -255,16 +254,12 @@ function updateStatus(joNumber, newStatus, element) {
         }
     }
 
-    // 2. IMMEDIATE UI REFRESH: Re-render cards so the border color and dropdown update instantly
     renderJobOrders();
 
-    // 3. BACKGROUND SYNC: Send the update to Google Sheets
     const payload = { joNumber: joNumber, status: newStatus };
     if (newStatus === "Completed") {
         payload.dateCompleted = new Date().toLocaleDateString(); 
     }
-
-    console.log("Updating J.O STATUS for JO:", joNumber, "to:", newStatus);
 
     fetch(sheetURL, {
         method: "POST",
@@ -272,20 +267,16 @@ function updateStatus(joNumber, newStatus, element) {
     })
     .then(async response => {
         if (!response.ok) throw new Error("Server error during update");
-        console.log("Status updated successfully in Sheet.");
-        // We still fetch once more after the server responds to ensure perfect sync
         await fetchJobOrders();
     })
     .catch(error => { 
         console.error("Error updating status:", error);
-        // If error, revert local state and re-render
         fetchJobOrders();
     });
 }
 
 // Function to Send Payment Update
 function updatePayment(joNumber, status, amount, element) {
-    // 1. OPTIMISTIC UPDATE
     const jobIndex = allJobOrders.findIndex(job => job["JOB ORDER NUMBER"] === joNumber);
     if (jobIndex !== -1) {
         allJobOrders[jobIndex]["PAYMENT STATUS"] = status;
@@ -299,15 +290,12 @@ function updatePayment(joNumber, status, amount, element) {
         amountPaid: parseFloat(amount) || 0 
     };
 
-    console.log("Updating Payment for JO:", joNumber);
-
     fetch(sheetURL, {
         method: "POST",
         body: JSON.stringify(payload)
     })
     .then(async response => {
         if (!response.ok) throw new Error("Server error during payment update");
-        console.log("Payment updated successfully.");
         await fetchJobOrders();
     })
     .catch(error => { 
@@ -316,20 +304,41 @@ function updatePayment(joNumber, status, amount, element) {
     });
 }
 
-// 5. PDF GENERATION FUNCTION
-function downloadCardAsPDF(elementId, joNumber) {
+/**
+ * FIXED PDF GENERATION FUNCTION
+ * Added scrollY: 0 and scrollX: 0 to html2canvas to prevent blank PDFs
+ * when the user has scrolled down the dashboard.
+ */
+async function downloadCardAsPDF(elementId, joNumber) {
     const element = document.getElementById(elementId);
     if (!element) {
-        alert("Error: Card not found.");
+        console.error("Error: Card not found.");
         return;
     }
+
+    if (typeof html2pdf === 'undefined') {
+        alert("The PDF library is still loading or unavailable. Please check your internet connection.");
+        return;
+    }
+
     const opt = {
         margin:       0.5,
         filename:      `JobOrder_${joNumber}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
+        html2canvas:  { 
+            scale: 2, 
+            useCORS: true, 
+            letterRendering: true,
+            scrollX: 0, 
+            scrollY: 0  // This forces the renderer to start at the top of the element regardless of page scroll
+        },
         jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
     };
-    html2pdf().set(opt).from(element).save();
-}
 
+    // Use promise-based execution to ensure the download starts cleanly
+    try {
+        await html2pdf().set(opt).from(element).save();
+    } catch (err) {
+        console.error("PDF Export failed:", err);
+    }
+}
