@@ -154,16 +154,21 @@ function renderJobOrders() {
     const uniqueID = `card-${t["JOB ORDER NUMBER"]}`;
     div.id = uniqueID;
 
-    // --- APPLY STATUS CLASS TO MAIN CARD ---
-    const statusRaw = (t["J.O STATUS"] || "").toLowerCase();
-    const statusClass = statusRaw.replace(/\s+/g, '-');
+    // --- APPLY STATUS CLASS AND BORDER COLOR TO MAIN CARD ---
+    const statusVal = (t["J.O STATUS"] || "Not Started");
+    const statusClass = statusVal.toLowerCase().replace(/\s+/g, '-');
     if (statusClass) {
         div.classList.add(`status-${statusClass}`);
     }
 
-    // Apply Priority Color (This controls the border-left-color)
-    const priority = (t["PRIORITY"] || "low").toLowerCase();
-    div.classList.add(priority); 
+    // Set Border Color Based on Status as requested
+    let borderColor = "#ddd"; // Default
+    if (statusVal === "Completed") borderColor = "#22C55E"; // Green
+    else if (statusVal === "Not Started") borderColor = "#FBBF24"; // Yellow
+    else if (statusVal === "In Progress") borderColor = "#F97316"; // Orange
+    else if (statusVal === "Cancelled") borderColor = "#EF4444"; // Red
+    
+    div.style.borderLeft = `6px solid ${borderColor}`;
 
     // Visual helper for Payment Status
     const payStatus = (t["PAYMENT STATUS"] || "UNPAID").toUpperCase();
@@ -240,9 +245,20 @@ setInterval(fetchJobOrders, 30000);
 
 // Function to Send Status Update
 function updateStatus(joNumber, newStatus, element) {
-    // Immediate UI Feedback: Change dropdown class locally
+    // Immediate UI Feedback: Change dropdown class and card border locally
     const statusClass = newStatus.toLowerCase().replace(/\s+/g, '-');
     element.className = `status-dropdown status-${statusClass}`;
+    
+    // Find the parent card to update border color immediately
+    const card = element.closest('.task-card');
+    if (card) {
+        let borderColor = "#ddd";
+        if (newStatus === "Completed") borderColor = "#22C55E";
+        else if (newStatus === "Not Started") borderColor = "#FBBF24";
+        else if (newStatus === "In Progress") borderColor = "#F97316";
+        else if (newStatus === "Cancelled") borderColor = "#EF4444";
+        card.style.borderLeft = `6px solid ${borderColor}`;
+    }
 
     if (element) {
         element.style.opacity = "0.5";
@@ -264,7 +280,7 @@ function updateStatus(joNumber, newStatus, element) {
     .then(async response => {
         if (!response.ok) throw new Error("Server error during update");
         console.log("Status updated successfully in Sheet.");
-        // Refresh everything to sync card border and data
+        // Refresh everything to sync card border and data from database
         await fetchJobOrders();
     })
     .catch(error => { 
