@@ -246,6 +246,7 @@ setInterval(fetchJobOrders, 30000);
 
 // Function to Send Status Update
 function updateStatus(joNumber, newStatus, element) {
+    // 1. OPTIMISTIC UPDATE: Update the local data array immediately
     const jobIndex = allJobOrders.findIndex(job => job["JOB ORDER NUMBER"] === joNumber);
     if (jobIndex !== -1) {
         allJobOrders[jobIndex]["J.O STATUS"] = newStatus;
@@ -254,8 +255,10 @@ function updateStatus(joNumber, newStatus, element) {
         }
     }
 
+    // 2. IMMEDIATE UI REFRESH
     renderJobOrders();
 
+    // 3. BACKGROUND SYNC
     const payload = { joNumber: joNumber, status: newStatus };
     if (newStatus === "Completed") {
         payload.dateCompleted = new Date().toLocaleDateString(); 
@@ -267,16 +270,19 @@ function updateStatus(joNumber, newStatus, element) {
     })
     .then(async response => {
         if (!response.ok) throw new Error("Server error during update");
-        await fetchJobOrders();
+        console.log("Sheet Update Success. Waiting 2s for TSV refresh...");
+        // DELAY RE-FETCH: Give Google time to refresh the published TSV file
+        setTimeout(fetchJobOrders, 2000);
     })
     .catch(error => { 
         console.error("Error updating status:", error);
-        fetchJobOrders();
+        fetchJobOrders(); // Revert on failure
     });
 }
 
 // Function to Send Payment Update
 function updatePayment(joNumber, status, amount, element) {
+    // 1. OPTIMISTIC UPDATE
     const jobIndex = allJobOrders.findIndex(job => job["JOB ORDER NUMBER"] === joNumber);
     if (jobIndex !== -1) {
         allJobOrders[jobIndex]["PAYMENT STATUS"] = status;
@@ -296,7 +302,8 @@ function updatePayment(joNumber, status, amount, element) {
     })
     .then(async response => {
         if (!response.ok) throw new Error("Server error during payment update");
-        await fetchJobOrders();
+        console.log("Payment Update Success. Waiting 2s for TSV refresh...");
+        setTimeout(fetchJobOrders, 2000);
     })
     .catch(error => { 
         console.error("Error updating payment:", error);
@@ -304,38 +311,19 @@ function updatePayment(joNumber, status, amount, element) {
     });
 }
 
-/**
- * FIXED PDF GENERATION FUNCTION
- * Added scrollY: 0 and scrollX: 0 to html2canvas to prevent blank PDFs
- * when the user has scrolled down the dashboard.
- */
 async function downloadCardAsPDF(elementId, joNumber) {
     const element = document.getElementById(elementId);
-    if (!element) {
-        console.error("Error: Card not found.");
-        return;
-    }
-
-    if (typeof html2pdf === 'undefined') {
-        alert("The PDF library is still loading or unavailable. Please check your internet connection.");
-        return;
-    }
+    if (!element) return;
+    if (typeof html2pdf === 'undefined') return;
 
     const opt = {
-        margin:       0.5,
-        filename:      `JobOrder_${joNumber}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { 
-            scale: 2, 
-            useCORS: true, 
-            letterRendering: true,
-            scrollX: 0, 
-            scrollY: 0  // This forces the renderer to start at the top of the element regardless of page scroll
-        },
-        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+        margin: 0.5,
+        filename: `JobOrder_${joNumber}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, letterRendering: true, scrollX: 0, scrollY: 0 },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
     };
 
-    // Use promise-based execution to ensure the download starts cleanly
     try {
         await html2pdf().set(opt).from(element).save();
     } catch (err) {
