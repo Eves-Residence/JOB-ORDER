@@ -155,18 +155,19 @@ function renderJobOrders() {
     div.id = uniqueID;
 
     // --- APPLY STATUS CLASS AND BORDER COLOR TO MAIN CARD ---
-    const statusVal = (t["J.O STATUS"] || "Not Started");
+    const statusVal = (t["J.O STATUS"] || "Not Started").trim();
+    const statusUpper = statusVal.toUpperCase();
     const statusClass = statusVal.toLowerCase().replace(/\s+/g, '-');
     if (statusClass) {
         div.classList.add(`status-${statusClass}`);
     }
 
-    // Set Border Color Based on Status as requested
+    // Set Border Color Based on Status as requested (Case-Insensitive)
     let borderColor = "#ddd"; // Default
-    if (statusVal === "Completed") borderColor = "#22C55E"; // Green
-    else if (statusVal === "Not Started") borderColor = "#FBBF24"; // Yellow
-    else if (statusVal === "In Progress") borderColor = "#F97316"; // Orange
-    else if (statusVal === "Cancelled") borderColor = "#EF4444"; // Red
+    if (statusUpper === "COMPLETED") borderColor = "#22C55E"; // Green
+    else if (statusUpper === "NOT STARTED") borderColor = "#FBBF24"; // Yellow
+    else if (statusUpper === "IN PROGRESS") borderColor = "#F97316"; // Orange
+    else if (statusUpper === "CANCELLED") borderColor = "#EF4444"; // Red
     
     div.style.borderLeft = `6px solid ${borderColor}`;
 
@@ -194,10 +195,10 @@ function renderJobOrders() {
             <div>
                 <strong>J.O. Status:</strong> 
                 <select class="status-dropdown status-${statusClass}" onchange="updateStatus('${t["JOB ORDER NUMBER"]}', this.value, this)">
-                    <option value="Not Started" ${t["J.O STATUS"] === "Not Started" ? "selected" : ""}>Pending</option>
-                    <option value="In Progress" ${t["J.O STATUS"] === "In Progress" ? "selected" : ""}>Ongoing</option>
-                    <option value="Completed" ${t["J.O STATUS"] === "Completed" ? "selected" : ""}>Completed</option>
-                    <option value="Cancelled" ${t["J.O STATUS"] === "Cancelled" ? "selected" : ""}>Cancelled</option>
+                    <option value="Not Started" ${statusUpper === "NOT STARTED" ? "selected" : ""}>Pending</option>
+                    <option value="In Progress" ${statusUpper === "IN PROGRESS" ? "selected" : ""}>Ongoing</option>
+                    <option value="Completed" ${statusUpper === "COMPLETED" ? "selected" : ""}>Completed</option>
+                    <option value="Cancelled" ${statusUpper === "CANCELLED" ? "selected" : ""}>Cancelled</option>
                 </select>
             </div>
             <div>
@@ -251,12 +252,13 @@ function updateStatus(joNumber, newStatus, element) {
     
     // Find the parent card to update border color immediately
     const card = element.closest('.task-card');
+    const newStatusUpper = newStatus.toUpperCase().trim();
     if (card) {
         let borderColor = "#ddd";
-        if (newStatus === "Completed") borderColor = "#22C55E";
-        else if (newStatus === "Not Started") borderColor = "#FBBF24";
-        else if (newStatus === "In Progress") borderColor = "#F97316";
-        else if (newStatus === "Cancelled") borderColor = "#EF4444";
+        if (newStatusUpper === "COMPLETED") borderColor = "#22C55E";
+        else if (newStatusUpper === "NOT STARTED") borderColor = "#FBBF24";
+        else if (newStatusUpper === "IN PROGRESS") borderColor = "#F97316";
+        else if (newStatusUpper === "CANCELLED") borderColor = "#EF4444";
         card.style.borderLeft = `6px solid ${borderColor}`;
     }
 
@@ -266,7 +268,7 @@ function updateStatus(joNumber, newStatus, element) {
     }
 
     const payload = { joNumber: joNumber, status: newStatus };
-    if (newStatus === "Completed") {
+    if (newStatusUpper === "COMPLETED") {
         const today = new Date();
         payload.dateCompleted = today.toLocaleDateString(); 
     }
